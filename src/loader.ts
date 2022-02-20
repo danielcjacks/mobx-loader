@@ -1,10 +1,43 @@
-import { hasOwnProperty, rightPadArray } from './helpers'
+import {
+    deepGet,
+    deepGetWithWilcard,
+    deepSet,
+    hasOwnProperty,
+    rightPadArray,
+} from './helpers'
 
-export type LoaderState = {
-    [functionName: string]: {
-        [stringifiedArgs: string]: number // number of currently running functions
+/**
+ has a fixed number of args, so will never have a case like
+ state = {
+     add: {
+         // called with no args
+         1: {
+             // and called with arg 1
+         }
+     }
+ }
+state = {
+    add: {
+        1: {
+            2: 1,
+            3: 2
+        },
+        2: {
+            3: 4
+        }
     }
 }
+
+ */
+
+export type LoaderState = {
+    [functionName: string]: LoaderStateArgs
+}
+
+// the number value is the currently running functions with these args
+export type LoaderStateArgs =
+    | Map<string, number>
+    | Map<typeof loaderWildcard, number>
 
 // we use a symbol to represent a function argument wildcard. This ensures that a real function argument will never
 // be accidentally interpreted as a wilcard (this might happen if we used something like undefined or '*')
@@ -46,34 +79,45 @@ export const wrapLoader = <A extends any[], R>(
     Object.defineProperty(wrappedFunction, 'name', { value: fn.name })
 }
 
-const setLoader = (
+const setLoader = <A extends any[]>(
     loaderState: LoaderState,
-    functionName: string,
-    functionArgs: any[],
+    fn: string | ((...args: A) => any),
+    functionArgs: A,
     isLoading: boolean
 ) => {
-    if (!loaderState[functionName]) {
-        loaderState[functionName] = {}
-    }
-
-    // stringifying is unfortunate, but javascript objects only take string keys (and Maps check equality by reference
-    // for arrays, not values so they can't be used here)
-    const stringifiedArgs = JSON.stringify(functionArgs)
+    const functionName = typeof fn === 'string' ? fn : fn.name
+    const path = [functionName, ...functionArgs]
 
     // we keep track of the number of instances of the function running with these args. The function is only considered
     // not loading when all these instances are finished (counter is back to 0). This prevents incorrectly saying the
     // loader is finished when a second call of the function finishes while the first call is still running.
-    const functionState = loaderState[functionName]
-    const currentlyRunningCount = functionState[stringifiedArgs] ?? 0
+    const runningCount = deepGet(loaderState, path) ?? 0
 
-    const newRunningCount = isLoading
-        ? currentlyRunningCount + 1
-        : currentlyRunningCount - 1
+    const newRunningCount = isLoading ? runningCount + 1 : runningCount - 1
 
     if (newRunningCount < 0) throw new Error('something is really wrong')
-    if (newRunningCount === 0) {
-        delete functionState[stringifiedArgs]
-    } else {
-        functionState[stringifiedArgs] = newRunningCount
-    }
+
+    deepSet(loaderState, path, newRunningCount)
+}
+
+const getLoader = <A extends any[]>(
+    loaderState: LoaderState,
+    fn: string | ((...args: A) => any),
+    functionArgs: A
+) => {
+    const functionName = typeof fn === 'string' ? fn : fn.name
+    const path = [functionName, ...functionArgs]
+
+    const currentlyRunningCounts = deepGetWithWilcard(
+        loaderState,
+        path,
+        loaderWildcard
+    ).filter((el) => el !== undefined)
+
+    const currentlyRunningCount = currentlyRunningCounts.reduce(
+        (countSum, countVal) => countSum + countVal,
+        0
+    )
+
+    return currentlyRunningCount > 0
 }
