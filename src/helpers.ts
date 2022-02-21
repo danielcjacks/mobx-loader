@@ -56,7 +56,8 @@ export const rightPadArray = <T>(array: T[], length: number, fill: T) => {
 export const deepSet = (
     obj: any,
     path_array: (string | number)[],
-    value: any
+    value: any,
+    createMaps: boolean = true
 ) => {
     let pointer = obj
 
@@ -65,15 +66,16 @@ export const deepSet = (
 
         const path_el_in_pointer =
             pointer instanceof Map ? pointer.has(path_el) : path_el in pointer
+        const last_path_el = i === path_array.length - 1
 
-        if (!path_el_in_pointer) {
+        if (!path_el_in_pointer || last_path_el) {
             let val
-            if (i === path_array.length) {
+            if (last_path_el) {
                 val = value
             } else if (typeof path_array[i + 1] === 'number') {
                 val = []
             } else {
-                val = {}
+                val = createMaps ? new Map() : {}
             }
 
             if (pointer instanceof Map) {
@@ -101,7 +103,7 @@ export const deepSet = (
     let pointer = obj
 
     for (let i = 0; i < path_array.length; i++) {
-        if (pointer = undefined) {
+        if (pointer === undefined) {
             break
         }
 
@@ -118,11 +120,13 @@ export const deepSet = (
 }
 
 /**
- * Deep get which works with arrays, objects and Maps. Uses a wildcard to mean any prop
+ * Deep get which works with arrays, objects and Maps. Uses a wildcard to mean any prop.
+ * Only returns values which match (unlike regular deep get which can return undefined
+ * if the prop doesn't exist)
  */
  export const deepGetWithWilcard = (
     obj: any,
-    path_array: (string | number)[],
+    path_array: (string | number | symbol)[],
     wildcard: any
 ) => {
     return deepGetWithWilcardRecursion([obj], path_array, wildcard)
@@ -130,7 +134,7 @@ export const deepSet = (
 
 const deepGetWithWilcardRecursion = (
     objs: any[],
-    path_array: (string | number)[],
+    path_array: (string | number | symbol)[],
     wildcard: any
 ): any[] => {
     if (path_array.length === 0) {
@@ -140,11 +144,12 @@ const deepGetWithWilcardRecursion = (
     const path_el = path_array[0]
     
     const results = objs.flatMap(obj => {
-        let next_objs
+        let next_objs: any
         if (path_el === wildcard) {
-            next_objs = obj instanceof Map ? obj.keys() : Object.keys(obj)
+            next_objs = obj instanceof Map ? [...obj.values()] : Object.values(obj)
         } else {
-            next_objs = obj instanceof Map ? obj.get(path_el) : obj[path_el]
+            const next_obj = obj instanceof Map ? obj.get(path_el) : obj[path_el]
+            next_objs = next_obj === undefined ? [] : [next_obj]
         }
         return deepGetWithWilcardRecursion(next_objs, path_array.slice(1, Infinity), wildcard)
     })
