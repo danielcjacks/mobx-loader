@@ -37,11 +37,11 @@ export const deep_for_each = (
     }
 }
 
-export const hasOwnProperty = <X extends {}, Y extends PropertyKey>(
+export const hasProp = <X extends {}, Y extends PropertyKey>(
     obj: X,
     prop: Y
 ): obj is X & Record<Y, unknown> => {
-    return obj.hasOwnProperty(prop)
+    return typeof obj === 'object' && prop in obj
 }
 
 export const rightPadArray = <T>(array: T[], length: number, fill: T) => {
@@ -51,107 +51,97 @@ export const rightPadArray = <T>(array: T[], length: number, fill: T) => {
 }
 
 /**
- * Deep set which works with arrays, objects and Maps
+ * Deep set which works with nested maps
  */
-export const deepSet = (
-    obj: any,
-    path_array: (string | number)[],
-    value: any,
-    createMaps: boolean = true
-) => {
+export const deepSet = (obj: any, path_array: any[], value: any) => {
     let pointer = obj
 
     for (let i = 0; i < path_array.length; i++) {
         const path_el = path_array[i]
 
-        const path_el_in_pointer =
-            pointer instanceof Map ? pointer.has(path_el) : path_el in pointer
+        const path_el_in_pointer = pointer.has(path_el)
         const last_path_el = i === path_array.length - 1
 
         if (!path_el_in_pointer || last_path_el) {
-            let val
-            if (last_path_el) {
-                val = value
-            } else if (typeof path_array[i + 1] === 'number') {
-                val = []
-            } else {
-                val = createMaps ? new Map() : {}
-            }
-
-            if (pointer instanceof Map) {
-                pointer.set(path_el, val)
-            } else {
-                pointer[path_el] = val
-            }
+            const val = last_path_el ? value : new Map()
+            pointer.set(path_el, val)
         }
 
-        if (pointer instanceof Map) {
-            pointer = pointer.get(path_el)
-        } else {
-            pointer = pointer[path_el]
-        }
+        pointer = pointer.get(path_el)
     }
 }
 
 /**
- * Deep get which works with arrays, objects and Maps
+ * Deep get which works with nested maps
  */
- export const deepGet = (
-    obj: any,
-    path_array: (string | number)[]
-) => {
+export const deepGet = (obj: any, path_array: any[]): any => {
     let pointer = obj
 
     for (let i = 0; i < path_array.length; i++) {
-        if (pointer === undefined) {
+        if (!(pointer instanceof Map)) {
             break
         }
 
         const path_el = path_array[i]
 
-        if (pointer instanceof Map) {
-            pointer = pointer.get(path_el)
-        } else {
-            pointer = pointer[path_el]
-        }
+        pointer = pointer?.get?.(path_el)
     }
 
     return pointer
 }
 
 /**
- * Deep get which works with arrays, objects and Maps. Uses a wildcard to mean any prop.
- * Only returns values which match (unlike regular deep get which can return undefined
- * if the prop doesn't exist)
+ * Deep get which works with Maps. Uses a wildcard to mean any prop.
+ * Only returns values which match the path (unlike regular deep get which can return undefined
+ * if the path doesn't exist)
  */
- export const deepGetWithWilcard = (
+export const deepGetWithWilcard = (
     obj: any,
-    path_array: (string | number | symbol)[],
+    path_array: any[],
     wildcard: any
 ) => {
     return deepGetWithWilcardRecursion([obj], path_array, wildcard)
 }
 
 const deepGetWithWilcardRecursion = (
-    objs: any[],
-    path_array: (string | number | symbol)[],
+    objs: any,
+    path_array: any[],
     wildcard: any
 ): any[] => {
     if (path_array.length === 0) {
         return objs
     }
-    
+
     const path_el = path_array[0]
-    
-    const results = objs.flatMap(obj => {
+
+    const results = objs.flatMap((obj: any) => {
         let next_objs: any
         if (path_el === wildcard) {
-            next_objs = obj instanceof Map ? [...obj.values()] : Object.values(obj)
+            const vals = obj?.values() ?? []
+            // obj.values() returns an iterator so we need to spread then to make it an array
+            next_objs = [...vals]
         } else {
-            const next_obj = obj instanceof Map ? obj.get(path_el) : obj[path_el]
+            const next_obj = obj?.get?.(path_el)
             next_objs = next_obj === undefined ? [] : [next_obj]
         }
-        return deepGetWithWilcardRecursion(next_objs, path_array.slice(1, Infinity), wildcard)
+        return deepGetWithWilcardRecursion(
+            next_objs,
+            path_array.slice(1, Infinity),
+            wildcard
+        )
+    })
+
+    return results
+}
+
+export const deepGetAllNumbers = (objs: (Map<any, any> | number)[]): number[] => {
+    const results = objs.flatMap((obj) => {
+        if (obj instanceof Map) {
+            const next_objs = [...obj.values()]
+            return deepGetAllNumbers(next_objs)
+        } else {
+            return obj
+        }
     })
 
     return results

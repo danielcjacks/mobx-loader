@@ -2,10 +2,11 @@ import { expect } from 'chai'
 import { describe, test } from 'mocha'
 import {
     deepGet,
+    deepGetAllNumbers,
     deepGetWithWilcard,
     deepSet,
     deep_for_each,
-    hasOwnProperty,
+    hasProp,
     rightPadArray,
 } from '../helpers'
 
@@ -33,16 +34,16 @@ describe('helpers.ts', () => {
             ])
         })
     })
-    describe(hasOwnProperty.name, () => {
+    describe(hasProp.name, () => {
         test('checks for a property', () => {
             const obj = { a: 1 }
-            expect(hasOwnProperty(obj, 'a')).to.equal(true)
-            expect(hasOwnProperty(obj, 'b')).to.equal(false)
+            expect(hasProp(obj, 'a')).to.equal(true)
+            expect(hasProp(obj, 'b')).to.equal(false)
         })
         test('works for arrays', () => {
             const ar = ['a', 'b']
-            expect(hasOwnProperty(ar, 1)).to.equal(true)
-            expect(hasOwnProperty(ar, 2)).to.equal(false)
+            expect(hasProp(ar, 1)).to.equal(true)
+            expect(hasProp(ar, 2)).to.equal(false)
         })
     })
     describe(rightPadArray.name, () => {
@@ -59,80 +60,59 @@ describe('helpers.ts', () => {
     })
     describe(deepSet.name, () => {
         test('sets existing property', () => {
-            const obj: any = {
-                a: new Map(
-                    Object.entries({
-                        b: new Map(
-                            Object.entries({
-                                c: [1, { d: 2 }, 3],
-                            })
-                        ),
-                    })
-                ),
-            }
+            const obj: any = new Map(Object.entries({
+                a: new Map(Object.entries({
+                    b: 2
+                }))
+            }))
 
-            deepSet(obj, ['a', 'b', 'c', 1, 'd'], 5)
+            deepSet(obj, ['a', 'b'], 5)
 
-            expect(obj.a.get('b').get('c')[1].d).to.equal(5)
+            expect(obj.get('a').get('b')).to.equal(5)
         })
         test('sets non existing properties', () => {
-            const obj: any = {}
+            const obj = new Map()
 
-            deepSet(obj, ['a', 'b', 2], 5)
+            deepSet(obj, ['a', 'b'], 5)
 
-            expect(obj.a.get('b')[2]).to.equal(5)
-        })
-        test('sets in object mode', () => {
-            const obj: any = {}
-            deepSet(obj, ['a', 'b'], 5, false)
-            expect(obj.a.b).to.equal(5)
+            expect(obj.get('a').get('b')).to.equal(5)
         })
     })
     describe(deepGet.name, () => {
         test('gets existing nested prop', () => {
-            const obj = {
-                a: [
-                    1,
-                    {
-                        b: new Map(
-                            Object.entries({
-                                c: 3,
-                            })
-                        ),
-                    },
-                    3,
-                ],
-            }
+            const obj = new Map(Object.entries({
+                a: new Map(Object.entries({
+                    b: 3
+                }))
+            }))
 
-            const result = deepGet(obj, ['a', 1, 'b', 'c'])
+            const result = deepGet(obj, ['a', 'b'])
             expect(result).to.equal(3)
         })
         test('returns undefined for non-existing path', () => {
-            const obj = {
-                a: [],
-            }
+            const obj = new Map()
 
-            const result = deepGet(obj, ['a', 5, 'b'])
+            const result = deepGet(obj, ['a', 'b'])
             expect(result).to.equal(undefined)
         })
     })
     describe(deepGetWithWilcard.name, () => {
         test('gets locations with wildcards', () => {
-            const obj = {
-                a: [
-                    1,
-                    {
+            const obj = new Map(Object.entries({
+                a: new Map(Object.entries({
+                    b: 1,
+                    c: new Map(Object.entries({
                         b: 2,
                         c: 3,
-                    },
-                    {
+                    })),
+                    d: new Map(Object.entries({
                         b: 4,
-                    },
-                    {
+                    })),
+                    e: new Map(Object.entries({
                         c: 5,
-                    },
-                ],
-            }
+                    })),
+                })),
+            }))
 
             const wildcard = Symbol('wildcard')
             const results = deepGetWithWilcard(
@@ -143,16 +123,18 @@ describe('helpers.ts', () => {
 
             expect(results).to.deep.equal([2, 4])
         })
-        test('works with Maps', () => {
+    })
+    describe(deepGetAllNumbers.name, () => {
+        test('gets numbers', () => {
             const obj = new Map(Object.entries({
-                a: new Map(Object.entries({
-                    b: 1,
+                a: 1,
+                b: new Map(Object.entries({
                     c: 2
                 }))
             }))
-            const wildcard = Symbol('wildcard')
-            const results = deepGetWithWilcard(obj, [wildcard, 'b'], wildcard)
-            expect(results).to.deep.equal([1])
+
+            const result = deepGetAllNumbers([obj])
+            expect(result).to.deep.equal([1, 2])
         })
     })
 })
