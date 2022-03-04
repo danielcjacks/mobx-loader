@@ -199,6 +199,9 @@ describe('loader.ts', () => {
             const loaderState = observable(new Map())
             const fn = wrapLoader(loaderState, async () => {})
 
+            // 'warm up' the state
+            await fn()
+
             let loadingHistory: boolean[] = []
             const disposer = autorun(() => {
                 const loading = getLoader(loaderState, fn)
@@ -215,8 +218,9 @@ describe('loader.ts', () => {
             const loaderState = observable(new Map())
             const fn = wrapLoader(loaderState, async (a) => {})
 
-            // this 'warms up' the state by adding fn to it. This causes all reactions to run regardless of
-            // which arguments they are tracking, so we get it out of the way here before the actual test
+            // this 'warms up' the state by adding fn to it. This first call causes all reactions to run regardless of
+            // which arguments they are tracking, but after this the autoruns will only activate if the function
+            // is called with the correct arguments
             await fn(3)
 
             let loadingHistory: [number, boolean][] = []
