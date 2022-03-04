@@ -14,14 +14,14 @@ Some examples of where mobx-loader may be useful:
 ```
 npm install mobx-loader
 ```
-
+or
 ```
 yarn add mobx-loader
 ```
 
 # Documentation
 
-[Full documentation](docs/readme.md)
+[Full documentation](docs/README.md)
 
 # Examples
 

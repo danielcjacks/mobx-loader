@@ -9,12 +9,13 @@
     "react",
     "loader"
   ],
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "test": "mocha --package package.json",
     "nt": "nodemon --exec npm run test",
     "coverage": "nyc npm run test",
-    "docs": "typedoc --plugin typedoc-plugin-markdown --options typedoc.json --disableSources --readme none --out docs index.ts"
+    "docs": "typedoc --plugin typedoc-plugin-markdown --options typedoc.json --disableSources --readme none --out docs index.ts",
+    "deploy": "tsc && npm publish"
   },
   "repository": {
     "type": "git",
