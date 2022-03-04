@@ -1,3 +1,4 @@
+import { runInAction, toJS } from 'mobx'
 import {
     deepGet,
     deepGetAllNumbers,
@@ -31,9 +32,7 @@ state = {
 
  */
 
-export type LoaderState = {
-    [functionName: string]: LoaderStateArgs
-}
+export type LoaderState = Map<Function, LoaderStateArgs>
 
 // the number value is the currently running functions with these args
 export type LoaderStateArgs =
@@ -51,20 +50,15 @@ export const wrapLoader = <A extends any[], R>(
     const wrappedFunction: typeof fn = (...args: A) => {
         const result = fn(...args)
         if (hasProp(result, 'then') && typeof result.then === 'function') {
-            // pad array in case the function was called with fewer arguments than the definition. Padding ensures that
-            // fn(1, undefined) and fn(1) are treated as the same arguments
-            const paddedArgs = rightPadArray(args, fn.length, undefined)
+            setLoader(loaderState, wrappedFunction, args, true)
 
-            setLoader(loaderState, fn.name, paddedArgs, true)
-
-            loaderState[fn.name]
             return result
                 .then((val: R) => {
-                    setLoader(loaderState, fn.name, paddedArgs, false)
+                    setLoader(loaderState, wrappedFunction, args, false)
                     return val
                 })
                 .catch((error: any) => {
-                    setLoader(loaderState, fn.name, paddedArgs, false)
+                    setLoader(loaderState, wrappedFunction, args, false)
                     return error
                 })
         } else {
@@ -80,7 +74,7 @@ export const wrapLoader = <A extends any[], R>(
 }
 
 /**
- * Sets the laoder state to indicate that a given function, called with a specific set of arguments,
+ * Sets the loader state to indicate that a given function, called with a specific set of arguments,
  * is running / finished. This function should be called every time a tracked function is started or finishes.
  * @param loaderState An object where loading information is persisted
  * @param fn The function to be tracked
@@ -92,47 +86,61 @@ export const wrapLoader = <A extends any[], R>(
  */
 export const setLoader = <A extends any[]>(
     loaderState: LoaderState,
-    fn: string | ((...args: A) => any),
+    fn: (...args: A) => any,
     functionArgs: A,
     isLoading: boolean
 ) => {
-    const functionName = typeof fn === 'string' ? fn : fn.name
-
-    if (!loaderState[functionName]) {
-        loaderState[functionName] = functionArgs.length === 0 ? 0 : new Map()
-    }
+    const a = toJS(loaderState)
+    // pad array in case the function was called with fewer arguments than the definition. Padding ensures that
+    // fn(1, undefined) and fn(1) are treated as the same arguments.
+    // This will only happen in non-typed environments like raw js, so we just force undefined to fit with the
+    // args type even though the type isn't techincally correct
+    const paddedArgs = rightPadArray(functionArgs, fn.length, undefined)
+    
+    const path = [fn, ...paddedArgs]
 
     // we keep track of the number of instances of the function running with these args. The function is only considered
     // not loading when all these instances are finished (counter is back to 0). This prevents incorrectly saying the
     // loader is finished when a second call of the function finishes while the first call is still running.
-    const runningCount = deepGet(loaderState[functionName], functionArgs) ?? 0
+    const runningCount = deepGet(loaderState, path) ?? 0
 
     const newRunningCount = isLoading ? runningCount + 1 : runningCount - 1
 
-    if (functionArgs.length === 0) {
-        // we have to do it like this since we cant change the top level value by passing it into a function
-        // since js doesnt have primitive pointers
-        loaderState[functionName] = newRunningCount
-    } else {
-        deepSet(loaderState[functionName], functionArgs, newRunningCount)
-    }
+    runInAction(() => {
+        deepSet(loaderState, path, newRunningCount)
+    })
 }
 
+/**
+ * Returns true if the function with given arguments is loading and false otherwise. Use {@link loaderWildcard} to
+ * find a match for any argument in that position. 
+ * 
+ * @example <caption>if ```fn('a', 'b')``` is currently loading, then </caption>
+ * ```
+ * getLoader(loaderState, fn, ['a', 'b']) // true
+ * getLoader(loaderState, fn, ['x', 'b']) // false
+ * getLoader(loaderState, fn, [loaderWildcard, 'b']) //true
+ * ```
+ */
 export const getLoader = <A extends any[]>(
     loaderState: LoaderState,
-    fn: string | ((...args: A) => any),
+    fn: (...args: A) => any,
     functionArgs: A | undefined = undefined
 ) => {
-    const functionName = typeof fn === 'string' ? fn : fn.name
 
-    const currentlyRunningCounts =
-        functionArgs === undefined
-            ? deepGetAllNumbers([loaderState[functionName]])
-            : deepGetWithWilcard(
-                  loaderState[functionName],
-                  functionArgs,
-                  loaderWildcard
-              )
+    let currentlyRunningCounts: number[]
+
+    if (functionArgs === undefined) {
+        currentlyRunningCounts = deepGetAllNumbers([loaderState.get(fn) ?? new Map()])
+    } else {
+        const paddedArgs = rightPadArray(functionArgs, fn.length, undefined)
+        const path = [fn, ...paddedArgs]
+        currentlyRunningCounts = deepGetWithWilcard(
+            loaderState,
+            path,
+            loaderWildcard
+        )
+    }
 
     const currentlyRunningCount = currentlyRunningCounts.reduce(
         (countSum, countVal) => countSum + countVal,

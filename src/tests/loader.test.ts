@@ -3,33 +3,35 @@ import { expect } from 'chai'
 import {
     getLoader,
     LoaderState,
+    loaderWildcard,
     makeAutoLoader,
     setLoader,
     wrapLoader,
 } from '../loader'
-import {autorun, observable, toJS} from 'mobx'
+import { autorun, observable, toJS, trace } from 'mobx'
 
 describe('loader.ts', () => {
     describe(setLoader.name, () => {
         test('sets a value in the state', () => {
-            const loaderState: LoaderState = {}
-            const testFunction = (a: number, b: string) => a + b
+            const loaderState: LoaderState = new Map()
+            const fn = (a: number, b: string) => a + b
 
-            // notice the arguments have types since the function itself was passed in, as opposed to the funtion name string
-            setLoader(loaderState, testFunction, [12, 'hi'], true)
+            // notice the arguments are properly typed
+            setLoader(loaderState, fn, [12, 'hi'], true)
 
             // @ts-ignore
-            const isLoading = loaderState.testFunction.get(12)?.get('hi')
+            const isLoading = loaderState.get(fn).get(12)?.get('hi')
             expect(isLoading).to.equal(1)
 
-            setLoader(loaderState, testFunction, [12, 'hi'], false)
+            setLoader(loaderState, fn, [12, 'hi'], false)
 
             // @ts-ignore
-            const isLoading2 = loaderState.testFunction.get(12)?.get('hi')
+            const isLoading2 = loaderState.get(fn).get(12)?.get('hi')
             expect(isLoading2).to.equal(0)
         })
         test('works with other data types', () => {
-            const loaderState: LoaderState = {}
+            const loaderState: LoaderState = new Map()
+            const fn: any = () => {}
 
             const a = new Date()
             const b: any[] = []
@@ -37,9 +39,11 @@ describe('loader.ts', () => {
             const d = new Map()
             const e = Symbol('my symbol')
 
-            setLoader(loaderState, 'testFunction', [a, b, c, d, e], true)
+            setLoader(loaderState, fn, [a, b, c, d, e], true)
 
-            const isLoading = loaderState.testFunction
+            // @ts-ignore
+            const isLoading = loaderState
+                .get(fn)
                 // @ts-ignore
                 .get(a)
                 .get(b)
@@ -49,37 +53,40 @@ describe('loader.ts', () => {
             expect(isLoading).to.equal(1)
         })
         test('works with multiple funtions and params', () => {
-            const loaderState: LoaderState = {}
+            const loaderState: LoaderState = new Map()
+            const fn1: any = () => {}
+            const fn2: any = () => {}
 
-            setLoader(loaderState, 'fn1', [1, 'a'], true)
-            setLoader(loaderState, 'fn2', [1, 'a'], true)
-            setLoader(loaderState, 'fn1', [1, 'b'], true)
+            setLoader(loaderState, fn1, [1, 'a'], true)
+            setLoader(loaderState, fn2, [1, 'a'], true)
+            setLoader(loaderState, fn1, [1, 'b'], true)
 
             // @ts-ignore
-            const isLoadingA = loaderState.fn1?.get(1)?.get('a')
+            const isLoadingA = loaderState.get(fn1).get(1).get('a')
             // @ts-ignore
-            const isLoadingB = loaderState.fn2?.get(1)?.get('a')
+            const isLoadingB = loaderState.get(fn2).get(1).get('a')
             // @ts-ignore
-            const isLoadingC = loaderState.fn1?.get(1)?.get('b')
+            const isLoadingC = loaderState.get(fn1).get(1)?.get('b')
 
             expect(isLoadingA).to.equal(1)
             expect(isLoadingB).to.equal(1)
             expect(isLoadingC).to.equal(1)
         })
         test('works with the same function multiple times', () => {
-            const loaderState: LoaderState = {}
+            const loaderState: LoaderState = new Map()
+            const fn: any = () => {}
 
             // using a counter means that we correctly know when ALL functions have finished,
             // which only happens when the counter is 0
-            setLoader(loaderState, 'fn1', [], true)
-            setLoader(loaderState, 'fn1', [], true)
-            const isLoading1 = loaderState.fn1
+            setLoader(loaderState, fn, [], true)
+            setLoader(loaderState, fn, [], true)
+            const isLoading1 = loaderState.get(fn)
 
-            setLoader(loaderState, 'fn1', [], false)
-            const isLoading2 = loaderState.fn1
+            setLoader(loaderState, fn, [], false)
+            const isLoading2 = loaderState.get(fn)
 
-            setLoader(loaderState, 'fn1', [], false)
-            const isLoading3 = loaderState.fn1
+            setLoader(loaderState, fn, [], false)
+            const isLoading3 = loaderState.get(fn)
 
             expect(isLoading1).to.equal(2)
             expect(isLoading2).to.equal(1)
@@ -88,34 +95,41 @@ describe('loader.ts', () => {
     })
     describe(getLoader.name, () => {
         test('gets loader value', () => {
-            const loaderState: LoaderState = {}
-            setLoader(loaderState, 'fn1', ['a'], true)
-            setLoader(loaderState, 'fn1', ['a'], true)
+            const loaderState: LoaderState = new Map()
+            const fn: any = () => {}
 
-            const isLoading1 = getLoader(loaderState, 'fn1', ['a'])
+            setLoader(loaderState, fn, ['a'], true)
+            setLoader(loaderState, fn, ['a'], true)
 
-            setLoader(loaderState, 'fn1', ['a'], false)
-            const isLoading2 = getLoader(loaderState, 'fn1', ['a'])
+            const isLoading1 = getLoader(loaderState, fn, ['a'])
 
-            setLoader(loaderState, 'fn1', ['a'], false)
-            const isLoading3 = getLoader(loaderState, 'fn1', ['a'])
+            setLoader(loaderState, fn, ['a'], false)
+            const isLoading2 = getLoader(loaderState, fn, ['a'])
+
+            setLoader(loaderState, fn, ['a'], false)
+            const isLoading3 = getLoader(loaderState, fn, ['a'])
 
             expect(isLoading1).to.equal(true)
             expect(isLoading2).to.equal(true)
             expect(isLoading3).to.equal(false)
         })
         test('checks all function instances if no args list is given', () => {
-            const loaderState: LoaderState = {}
-            setLoader(loaderState, 'fn1', ['a', 'b'], true)
+            const loaderState: LoaderState = new Map()
+            const fn1: any = () => {}
+            const fn2: any = () => {}
 
-            const isLoading = getLoader(loaderState, 'fn1')
+            setLoader(loaderState, fn1, ['a', 'b'], true)
 
-            expect(isLoading).to.equal(true)
+            const isLoading1 = getLoader(loaderState, fn1)
+            const isLoading2 = getLoader(loaderState, fn2)
+
+            expect(isLoading1).to.equal(true)
+            expect(isLoading2).to.equal(false)
         })
     })
     describe(wrapLoader.name, () => {
         test('tracks loading for async functions', async () => {
-            let loaderState: LoaderState = {}
+            let loaderState: LoaderState = new Map()
 
             const fn = wrapLoader(loaderState, async () => {})
 
@@ -129,7 +143,7 @@ describe('loader.ts', () => {
             expect(isLoading2).to.equal(false)
         })
         test('tracks loading on error', async () => {
-            let loaderState: LoaderState = {}
+            let loaderState: LoaderState = new Map()
 
             const fn = wrapLoader(loaderState, async () => {
                 throw new Error()
@@ -146,28 +160,28 @@ describe('loader.ts', () => {
             expect(isLoading2).to.equal(false)
         })
         test("doesn't track loading for synchronous functions", () => {
-            let loaderState: LoaderState = {}
+            let loaderState: LoaderState = new Map()
 
             const fn = wrapLoader(loaderState, () => {})
 
             fn()
 
-            expect(loaderState).to.deep.equal({})
+            expect(loaderState).to.deep.equal(new Map())
         })
     })
     describe(makeAutoLoader.name, () => {
         test('works with classes', () => {
             class MyClass {
-                loaderState: any = {}
+                loaderState: any = new Map()
 
                 constructor() {
                     makeAutoLoader(this, this.loaderState, { fn1: false })
                 }
-    
+
                 fn1 = async () => {}
                 fn2 = async () => {}
             }
-    
+
             const myClass = new MyClass()
 
             const prom1 = myClass.fn1()
@@ -180,15 +194,13 @@ describe('loader.ts', () => {
             expect(fn1Loader).to.equal(undefined)
         })
     })
-    describe('integration tests', () => {
-        test('mobx integration', async () => {
-            const loaderState = observable({})
-
-            const fn = wrapLoader(loaderState, async () => { })
+    describe('mobx integration tests', () => {
+        test('triggers reactions on loading change', async () => {
+            const loaderState = observable(new Map())
+            const fn = wrapLoader(loaderState, async () => {})
 
             let loadingHistory: boolean[] = []
-            const auto = autorun(() => {
-                const a = toJS
+            const disposer = autorun(() => {
                 const loading = getLoader(loaderState, fn)
                 loadingHistory.push(loading)
             })
@@ -196,8 +208,73 @@ describe('loader.ts', () => {
             await fn()
 
             expect(loadingHistory).to.deep.equal([false, true, false])
+
+            disposer()
+        })
+        test("doesn't trigger unnecessary reactions", async () => {
+            const loaderState = observable(new Map())
+            const fn = wrapLoader(loaderState, async (a) => {})
+
+            // this 'warms up' the state by adding fn to it. This causes all reactions to run regardless of
+            // which arguments they are tracking, so we get it out of the way here before the actual test
+            await fn(3)
+
+            let loadingHistory: [number, boolean][] = []
+            const disposer1 = autorun(() => {
+                // trace(true)
+                const loading = getLoader(loaderState, fn, [1])
+                loadingHistory.push([1, loading])
+            })
+
+            const disposer2 = autorun(() => {
+                const loading = getLoader(loaderState, fn, [2])
+                loadingHistory.push([2, loading])
+            })
+
+            await fn(3)
+            expect(loadingHistory).to.deep.equal([
+                [1, false],
+                [2, false],
+            ])
+            await fn(2)
+            expect(loadingHistory).to.deep.equal([
+                [1, false],
+                [2, false],
+                [2, true],
+                [2, false],
+            ])
+            await fn(1)
+            expect(loadingHistory).to.deep.equal([
+                [1, false],
+                [2, false],
+                [2, true],
+                [2, false],
+                [1, true],
+                [1, false],
+            ])
+
+            disposer1()
+            disposer2()
+        })
+        test('tracks with wildcards', async () => {
+            const loaderState = observable(new Map())
+            const fn = wrapLoader(loaderState, async (a, b) => {})
+
+            // 'warm up' state
+            await fn(1, 2)
+
+            let loadingHistory: boolean[] = []
+            const disposer = autorun(() => {
+                const loading = getLoader(loaderState, fn, [loaderWildcard, 2])
+                loadingHistory.push(loading)
+            })
+
+            await fn(5, 2) // causes autorun
+            await fn(5, 3) // no autorun
+
+            expect(loadingHistory).to.deep.equal([false, true, false])
+
+            disposer()
         })
     })
 })
-
-// TODO: make top level a map and store the actual function instead of just the name

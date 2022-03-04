@@ -41,12 +41,17 @@ export const hasProp = <X extends {}, Y extends PropertyKey>(
     obj: X,
     prop: Y
 ): obj is X & Record<Y, unknown> => {
-    return typeof obj === 'object' && prop in obj
+    // @ts-ignore
+    return typeof obj === 'object' && obj[prop] !== undefined
 }
 
-export const rightPadArray = <T>(array: T[], length: number, fill: T) => {
+export const rightPadArray = <T extends any[]>(
+    array: T,
+    length: number,
+    fill: T[number]
+): T => {
     return length > array.length
-        ? array.concat(Array(length - array.length).fill(fill))
+        ? (array.concat(Array(length - array.length).fill(fill)) as T)
         : array
 }
 
@@ -59,7 +64,7 @@ export const deepSet = (obj: any, path_array: any[], value: any) => {
     for (let i = 0; i < path_array.length; i++) {
         const path_el = path_array[i]
 
-        const path_el_in_pointer = pointer.has(path_el)
+        const path_el_in_pointer = pointer.get(path_el) !== undefined
         const last_path_el = i === path_array.length - 1
 
         if (!path_el_in_pointer || last_path_el) {
@@ -78,8 +83,8 @@ export const deepGet = (obj: any, path_array: any[]): any => {
     let pointer = obj
 
     for (let i = 0; i < path_array.length; i++) {
-        if (!(pointer instanceof Map)) {
-            break
+        if (!hasProp(pointer, 'get')) {
+            return undefined
         }
 
         const path_el = path_array[i]
@@ -134,9 +139,11 @@ const deepGetWithWilcardRecursion = (
     return results
 }
 
-export const deepGetAllNumbers = (objs: (Map<any, any> | number)[]): number[] => {
+export const deepGetAllNumbers = (
+    objs: (Map<any, any> | number)[]
+): number[] => {
     const results = objs.flatMap((obj) => {
-        if (obj instanceof Map) {
+        if (hasProp(obj, 'get')) {
             const next_objs = [...obj.values()]
             return deepGetAllNumbers(next_objs)
         } else {
