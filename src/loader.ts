@@ -25,7 +25,7 @@ export const loaderWildcard = Symbol('loaderWildcard')
 
 /**
  * Wraps a function so that it automatically sets the loading state to be true while the function is running.
- * wrapLoader only sets loading state for asynchronous function.
+ * Any kind of function can be wrapped, but wrapLoader will only actually set loading state for asynchronous functions.
  * @param loaderState An object where loading information is persisted
  * @param fn Can be any function
  * @returns A wrapped version of fn
