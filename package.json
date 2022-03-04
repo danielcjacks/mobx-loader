@@ -13,7 +13,8 @@
   "scripts": {
     "test": "mocha --package package.json",
     "nt": "nodemon --exec npm run test",
-    "coverage": "nyc npm run test"
+    "coverage": "nyc npm run test",
+    "docs": "typedoc --plugin typedoc-plugin-markdown --options typedoc.json --disableSources --readme none --out docs index.ts"
   },
   "repository": {
     "type": "git",
@@ -41,7 +42,9 @@
     "chai": "^4.3.6",
     "mocha": "^9.2.0",
     "nyc": "^15.1.0",
-    "sucrase": "^3.20.3"
+    "sucrase": "^3.20.3",
+    "typedoc": "^0.22.12",
+    "typedoc-plugin-markdown": "^3.11.14"
   },
   "mocha": {
     "require": [

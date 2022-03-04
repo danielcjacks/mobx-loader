@@ -11,29 +11,30 @@ export const is_simple_object = (val: any) =>
  */
 export const deep_for_each = (
     item: any,
-    processor: (value: any, path: (string | number)[]) => void,
-    current_path: any[] = []
+    processor: (value: any, path: (string | number)[], parent: any) => void,
+    current_path: any[] = [],
+    parent: any = undefined,
 ) => {
     const is_object = is_simple_object(item)
     const is_array = Array.isArray(item)
     const is_primitive = !is_object && !is_array
 
     if (is_object) {
-        processor(item, current_path)
+        processor(item, current_path, parent)
         for (const prop in item) {
-            deep_for_each(item[prop], processor, [...current_path, prop])
+            deep_for_each(item[prop], processor, [...current_path, prop], item)
         }
     }
 
     if (is_array) {
-        processor(item, current_path)
+        processor(item, current_path, parent)
         item.forEach((el, i) => {
-            deep_for_each(el, processor, [...current_path, i])
+            deep_for_each(el, processor, [...current_path, i], item)
         })
     }
 
     if (is_primitive) {
-        processor(item, current_path)
+        processor(item, current_path, parent)
     }
 }
 

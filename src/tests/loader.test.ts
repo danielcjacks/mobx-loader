@@ -170,12 +170,12 @@ describe('loader.ts', () => {
         })
     })
     describe(makeAutoLoader.name, () => {
-        test('works with classes', () => {
+        test('works with classes and respects overrides', () => {
             class MyClass {
                 loaderState: any = new Map()
 
                 constructor() {
-                    makeAutoLoader(this, this.loaderState, { fn1: false })
+                    makeAutoLoader(this.loaderState, this, { overrides: { fn1: false}, recursive: false })
                 }
 
                 fn1 = async () => {}
@@ -192,6 +192,27 @@ describe('loader.ts', () => {
 
             expect(fn2IsLoading).to.equal(true)
             expect(fn1Loader).to.equal(undefined)
+        })
+        test('works on objects and works recursively', () => {
+            const loaderState = new Map()
+
+            const obj = {
+                fn: async () => { },
+                child: {
+                    fn2: async () => { }
+                }
+            }
+
+            makeAutoLoader(loaderState, obj)
+
+            const prom1 = obj.fn()
+            const isLoading1 = getLoader(loaderState, obj.fn)
+            
+            const prom2 = obj.child.fn2()
+            const isLoading2 = getLoader(loaderState, obj.child.fn2)
+
+            expect(isLoading1).to.equal(true)
+            expect(isLoading2).to.equal(true)
         })
     })
     describe('mobx integration tests', () => {

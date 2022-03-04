@@ -1,1 +1,1 @@
-// export { getLoader, wrapLoader, makeAutoLoader } from 'loaders'
+export { getLoader, setLoader, wrapLoader, makeAutoLoader, loaderWildcard, LoaderState } from './src/loader'

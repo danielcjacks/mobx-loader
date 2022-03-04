@@ -48,12 +48,12 @@ describe('helpers.ts', () => {
     })
     describe(rightPadArray.name, () => {
         test('adds padding', () => {
-            const ar = ['a', 'b']
+            const ar: (string | undefined)[] = ['a', 'b']
             const result = rightPadArray(ar, 4, undefined)
             expect(result).to.deep.equal(['a', 'b', undefined, undefined])
         })
         test("doesn't remove elements", () => {
-            const ar = ['a', 'b']
+            const ar: (string | undefined)[] = ['a', 'b']
             const result = rightPadArray(ar, 1, undefined)
             expect(result).to.deep.equal(['a', 'b'])
         })
