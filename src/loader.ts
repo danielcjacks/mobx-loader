@@ -104,7 +104,7 @@ export const setLoader = <A extends any[]>(
  * @param functionArgs The arguments to check for. The number and types of arguments should match the definition of the
  *                     supplied function. functionArgs can be unspecified or undefined to check for any combination
  *                     of arguments. Use {@link loaderWildcard} as an argument to match any argument in that position.
- * 
+ *
  * @example <caption>if ```fn(1, 'a')``` is currently loading, then </caption>
  * ```
  * getLoader(loaderState, fn) // true
@@ -146,7 +146,7 @@ export const getLoader = <A extends any[]>(
  * Automatically wraps all functions with {@link wrapLoader} in an object or class.
  * @param loaderState An object where loading information is persisted
  * @param item An object, class or array
- * @param options.recursive Wraps objects, arrays and classes which are deeply nested in the input item
+ * @param options.recursive Wraps objects, arrays and classes which are deeply nested in the input item. Defaults to true
  * @param options.overrides Disable wrapping on certain props. E.g. { myFn: false } will disable wrapping for myFn.
  *                          Currently only supported for top level props.
  */
@@ -154,9 +154,9 @@ export const makeAutoLoader = (
     loaderState: object,
     item: object,
     options: {
-        recursive: boolean
-        overrides: { [propName: string]: boolean }
-    } = { recursive: true, overrides: {} }
+        recursive?: boolean
+        overrides?: { [propName: string]: boolean }
+    } = {}
 ) => {
     const wrap_if_function = (
         val: any,
@@ -164,7 +164,8 @@ export const makeAutoLoader = (
         parent: any
     ) => {
         const prop = path[path.length - 1]
-        const is_overriden = path.length === 1 && options.overrides[prop] === false
+        const is_overriden =
+            path.length === 1 && options.overrides?.[prop] === false
 
         if (val instanceof Function && !is_overriden) {
             // @ts-ignore
@@ -172,15 +173,15 @@ export const makeAutoLoader = (
         }
     }
 
-    if (options.recursive === true) {
-        deep_for_each(item, (value, path, parent) =>
-            wrap_if_function(value, path, parent)
-        )
-    } else {
+    if (options.recursive === false) {
         Object.keys(item).forEach((prop) => {
             // @ts-ignore
             const val = item[prop]
             wrap_if_function(val, [prop], item)
         })
+    } else {
+        deep_for_each(item, (value, path, parent) =>
+            wrap_if_function(value, path, parent)
+        )
     }
 }
