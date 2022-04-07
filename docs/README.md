@@ -80,8 +80,8 @@ Automatically wraps all functions with [wrapLoader](README.md#wraploader) in an 
 | `loaderState` | `object` | An object where loading information is persisted |
 | `item` | `object` | An object, class or array |
 | `options` | `Object` | - |
-| `options.overrides` | `Object` | Disable wrapping on certain props. E.g. { myFn: false } will disable wrapping for myFn.                          Currently only supported for top level props. |
-| `options.recursive` | `boolean` | Wraps objects, arrays and classes which are deeply nested in the input item |
+| `options.overrides?` | `Object` | Disable wrapping on certain props. E.g. { myFn: false } will disable wrapping for myFn.                          Currently only supported for top level props. |
+| `options.recursive?` | `boolean` | Wraps objects, arrays and classes which are deeply nested in the input item. Defaults to true |
 
 #### Returns
 
@@ -122,7 +122,7 @@ ___
 ▸ **wrapLoader**<`A`, `R`\>(`loaderState`, `fn`): (...`args`: `A`) => `R`
 
 Wraps a function so that it automatically sets the loading state to be true while the function is running.
-wrapLoader only sets loading state for asynchronous function.
+Any kind of function can be wrapped, but wrapLoader will only actually set loading state for asynchronous functions.
 
 #### Type parameters
 
