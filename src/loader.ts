@@ -1,4 +1,4 @@
-import { runInAction, toJS } from 'mobx'
+import { runInAction } from 'mobx'
 import {
     deepGet,
     deepGetAllNumbers,
@@ -6,7 +6,7 @@ import {
     deepSet,
     deep_for_each,
     hasProp,
-    rightPadArray,
+    rightPadArray
 } from './helpers'
 
 export type LoaderState = Map<Function, LoaderStateArgs>
@@ -75,7 +75,6 @@ export const setLoader = <A extends any[]>(
     functionArgs: A,
     isLoading: boolean
 ) => {
-    const a = toJS(loaderState)
     // pad array in case the function was called with fewer arguments than the definition. Padding ensures that
     // fn(1, undefined) and fn(1) are treated as the same arguments.
     // This will only happen in non-typed environments like raw js, so we just force undefined to fit with the
@@ -90,7 +89,8 @@ export const setLoader = <A extends any[]>(
     const runningCount = deepGet(loaderState, path) ?? 0
 
     const newRunningCount = isLoading ? runningCount + 1 : runningCount - 1
-
+    
+    // we need a runInAction so mobx updates reactions when we set the loader
     runInAction(() => {
         deepSet(loaderState, path, newRunningCount)
     })
