@@ -46,7 +46,8 @@ export const wrapLoader = <A extends any[], R>(
                 })
                 .catch((error: any) => {
                     setLoader(loaderState, wrappedFunction, args, false)
-                    return error
+                    // we make sure to propagate any errors that happen
+                    return Promise.reject(error)
                 })
         } else {
             return result
