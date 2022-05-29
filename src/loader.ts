@@ -83,15 +83,17 @@ export const setLoader = <A extends any[]>(
 
     const path = [fn, ...paddedArgs]
 
-    // we keep track of the number of instances of the function running with these args. The function is only considered
-    // not loading when all these instances are finished (counter is back to 0). This prevents incorrectly saying the
-    // loader is finished when a second call of the function finishes while the first call is still running.
-    const runningCount = deepGet(loaderState, path) ?? 0
-
-    const newRunningCount = isLoading ? runningCount + 1 : runningCount - 1
     
-    // we need a runInAction so mobx updates reactions when we set the loader
+    // we need a runInAction so mobx updates reactions when we set the loader. We also put the read in here to prevent
+    // mobx from tracking the read and potentially generating an infinite loop
     runInAction(() => {
+        // we keep track of the number of instances of the function running with these args. The function is only considered
+        // not loading when all these instances are finished (counter is back to 0). This prevents incorrectly saying the
+        // loader is finished when a second call of the function finishes while the first call is still running.
+        const runningCount = deepGet(loaderState, path) ?? 0
+    
+        const newRunningCount = isLoading ? runningCount + 1 : runningCount - 1
+
         deepSet(loaderState, path, newRunningCount)
     })
 }
