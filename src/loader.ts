@@ -101,7 +101,7 @@ export const setLoader = <A extends any[]>(
 
 // we can't inline this due to a typescript bug.
 // https://stackoverflow.com/questions/64138789/why-are-typescript-mapped-tuple-types-behaving-differently-when-supplying-generi
-type AddWildcardTypeToTuple<Tuple> = {
+export type AddWildcardTypeToTuple<Tuple> = {
     [Index in keyof Tuple]: Tuple[Index] | typeof loaderWildcard
 }
 

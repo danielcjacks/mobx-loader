@@ -1,6 +1,6 @@
 {
   "name": "mobx-loader",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Reactively check if an async function is running",
   "keywords": [
     "mobx",
