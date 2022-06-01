@@ -1,1 +1,1 @@
-export { getLoader, setLoader, wrapLoader, makeAutoLoader, loaderWildcard, LoaderState } from './src/loader'
+export { getLoader, setLoader, wrapLoader, makeAutoLoader, loaderWildcard, LoaderState, AddWildcardTypeToTuple } from './src/loader'
