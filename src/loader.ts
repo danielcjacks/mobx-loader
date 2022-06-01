@@ -99,6 +99,12 @@ export const setLoader = <A extends any[]>(
     })
 }
 
+// we can't inline this due to a typescript bug.
+// https://stackoverflow.com/questions/64138789/why-are-typescript-mapped-tuple-types-behaving-differently-when-supplying-generi
+type AddWildcardTypeToTuple<Tuple> = {
+    [Index in keyof Tuple]: Tuple[Index] | typeof loaderWildcard
+}
+
 /**
  * Returns true if the function with given arguments is loading and false otherwise.
  *
@@ -119,7 +125,7 @@ export const setLoader = <A extends any[]>(
 export const getLoader = <A extends any[]>(
     loaderState: LoaderState,
     fn: (...args: A) => any,
-    functionArgs: A | undefined = undefined
+    functionArgs: AddWildcardTypeToTuple<A> | undefined = undefined
 ) => {
     let currentlyRunningCounts: number[]
 

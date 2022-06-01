@@ -175,7 +175,10 @@ describe('loader.ts', () => {
                 loaderState: any = new Map()
 
                 constructor() {
-                    makeAutoLoader(this.loaderState, this, { overrides: { fn1: false}, recursive: false })
+                    makeAutoLoader(this.loaderState, this, {
+                        overrides: { fn1: false },
+                        recursive: false,
+                    })
                 }
 
                 fn1 = async () => {}
@@ -197,17 +200,17 @@ describe('loader.ts', () => {
             const loaderState = new Map()
 
             const obj = {
-                fn: async () => { },
+                fn: async () => {},
                 child: {
-                    fn2: async () => { }
-                }
+                    fn2: async () => {},
+                },
             }
 
             makeAutoLoader(loaderState, obj)
 
             const prom1 = obj.fn()
             const isLoading1 = getLoader(loaderState, obj.fn)
-            
+
             const prom2 = obj.child.fn2()
             const isLoading2 = getLoader(loaderState, obj.child.fn2)
 
@@ -300,6 +303,16 @@ describe('loader.ts', () => {
             expect(loadingHistory).to.deep.equal([false, true, false])
 
             disposer()
+        })
+        test('allows wildcards in type definition', async () => {
+            const loaderState = new Map()
+            const fn = wrapLoader(
+                loaderState,
+                async (a: number, b: string) => {}
+            )
+
+            // wildcard allowed even though it is not of type string, the type of parameter b
+            const loading = getLoader(loaderState, fn, [2, loaderWildcard])
         })
     })
 })
